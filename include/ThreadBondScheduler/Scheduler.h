@@ -20,16 +20,20 @@ class IScheduler {
 public:
     virtual int schedule(const Task& task) = 0;
     virtual void unschedule(int taskID) = 0;
-    virtual void runScheduledTasks() = 0;
+    virtual void runTasks() = 0;
+    virtual int getTaskCount() const = 0;
+    virtual void clear() = 0;
 };
 
 class SchedulerImpl1 : public IScheduler {
 public:
     SchedulerImpl1();
     ~SchedulerImpl1();
-    int schedule(const Task& task);
-    void unschedule(int taskID);
-    void runTasks();
+    int schedule(const Task& task) override;
+    void unschedule(int taskID) override;
+    void runTasks() override;
+    int getTaskCount() const override;
+    void clear() override;
 private:
     std::unordered_map<int, Task> m_tasks;
     std::mutex m_mutex;

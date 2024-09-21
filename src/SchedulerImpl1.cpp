@@ -20,6 +20,16 @@ void SchedulerImpl1::unschedule(int taskID) {
     // 如果taskID不存在，什么也不做
 }
 
+int SchedulerImpl1::getTaskCount() const {
+    // std::lock_guard<std::mutex> lock(m_mutex);
+    return m_tasks.size();
+}
+
+void SchedulerImpl1::clear() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_tasks.clear();
+}
+
 void SchedulerImpl1::runTasks() {
     std::vector<Task> tasksToRun;
     {
