@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "ThreadBondScheduler/Scheduler.h"
+#include "SingleThreadScheduler/Scheduler.h"
 
 class SchedulerImpl1Test : public ::testing::Test {
 protected:
@@ -77,6 +77,24 @@ TEST_F(SchedulerImpl1Test, GetTaskCount) {
     
     scheduler.unschedule(1);  // 假设任务ID从0开始
     EXPECT_EQ(scheduler.getTaskCount(), 2);
+}
+
+TEST_F(SchedulerImpl1Test, ClearTasks) {
+    Task task1([]() {}, __FILE__, __LINE__);
+    Task task2([]() {}, __FILE__, __LINE__);
+    Task task3([]() {}, __FILE__, __LINE__);
+    
+    scheduler.schedule(task1);
+    scheduler.schedule(task2);
+    scheduler.schedule(task3);
+    EXPECT_EQ(scheduler.getTaskCount(), 3);
+    
+    scheduler.clear();
+    EXPECT_EQ(scheduler.getTaskCount(), 0);
+    
+    // 确保在清除后仍然可以添加新任务
+    scheduler.schedule(task1);
+    EXPECT_EQ(scheduler.getTaskCount(), 1);
 }
 
 int main(int argc, char **argv) {
