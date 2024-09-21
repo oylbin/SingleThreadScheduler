@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 #include "SingleThreadScheduler/Scheduler.h"
+#include <thread>
+#include <atomic>
+#include <vector>
 
 class SchedulerImpl1Test : public ::testing::Test {
 protected:
@@ -41,7 +44,7 @@ TEST_F(SchedulerImpl1Test, RunTasks) {
     
     EXPECT_TRUE(task1Executed);
     EXPECT_TRUE(task2Executed);
-    EXPECT_EQ(scheduler.getTaskCount(), 2);  // 任务执行后仍然保留在调度器中
+    EXPECT_EQ(scheduler.getTaskCount(), 0);  // 任务执行后调度器中没有任务
 }
 
 TEST_F(SchedulerImpl1Test, TaskExceptionHandling) {
@@ -58,7 +61,7 @@ TEST_F(SchedulerImpl1Test, TaskExceptionHandling) {
     scheduler.runTasks();
     
     EXPECT_TRUE(exceptionCaught);
-    EXPECT_EQ(scheduler.getTaskCount(), 1);  // 异常任务仍然保留在调度器中
+    EXPECT_EQ(scheduler.getTaskCount(), 0);
 }
 
 TEST_F(SchedulerImpl1Test, GetTaskCount) {
@@ -79,23 +82,105 @@ TEST_F(SchedulerImpl1Test, GetTaskCount) {
     EXPECT_EQ(scheduler.getTaskCount(), 2);
 }
 
-TEST_F(SchedulerImpl1Test, ClearTasks) {
-    Task task1([]() {}, __FILE__, __LINE__);
-    Task task2([]() {}, __FILE__, __LINE__);
-    Task task3([]() {}, __FILE__, __LINE__);
-    
-    scheduler.schedule(task1);
-    scheduler.schedule(task2);
-    scheduler.schedule(task3);
-    EXPECT_EQ(scheduler.getTaskCount(), 3);
-    
-    scheduler.clear();
-    EXPECT_EQ(scheduler.getTaskCount(), 0);
-    
-    // 确保在清除后仍然可以添加新任务
-    scheduler.schedule(task1);
+TEST_F(SchedulerImpl1Test, StopScheduler) {
+    SchedulerImpl1 scheduler;
+    int taskId = 0;
+    taskId = scheduler.schedule(Task([](){ /* 简单任务 */ }, __FILE__, __LINE__));
+    EXPECT_EQ(scheduler.getTaskCount(), 1);
+    EXPECT_GE(taskId, 0);
+    scheduler.stop();
+    taskId = scheduler.schedule(Task([](){ /* 简单任务 */ }, __FILE__, __LINE__));
+    EXPECT_LT(taskId, 0);
     EXPECT_EQ(scheduler.getTaskCount(), 1);
 }
+
+TEST_F(SchedulerImpl1Test, ConcurrentScheduling) {
+    SchedulerImpl1 scheduler;
+    const int numThreads = 10;
+    const int tasksPerThread = 1000;
+    std::vector<std::thread> threads;
+    
+    for (int i = 0; i < numThreads; ++i) {
+        threads.emplace_back([&scheduler, tasksPerThread]() {
+            for (int j = 0; j < tasksPerThread; ++j) {
+                scheduler.schedule(Task([](){ /* 简单任务 */ }, __FILE__, __LINE__));
+            }
+        });
+    }
+    
+    for (auto& thread : threads) {
+        thread.join();
+    }
+    
+    EXPECT_EQ(scheduler.getTaskCount(), numThreads * tasksPerThread);
+}
+
+TEST_F(SchedulerImpl1Test, ConcurrentUnscheduling) {
+    SchedulerImpl1 scheduler;
+    const int numTasks = 1000;
+    std::vector<int> taskIDs;
+    
+    for (int i = 0; i < numTasks; ++i) {
+        taskIDs.push_back(scheduler.schedule(Task([](){ /* 简单任务 */ }, __FILE__, __LINE__)));
+    }
+    
+    const int numThreads = 10;
+    std::vector<std::thread> threads;
+    
+    for (int i = 0; i < numThreads; ++i) {
+        threads.emplace_back([&scheduler, &taskIDs, i, numThreads]() {
+            for (int j = i; j < taskIDs.size(); j += numThreads) {
+                scheduler.unschedule(taskIDs[j]);
+            }
+        });
+    }
+    
+    for (auto& thread : threads) {
+        thread.join();
+    }
+    
+    EXPECT_EQ(scheduler.getTaskCount(), 0);
+}
+
+TEST_F(SchedulerImpl1Test, ConcurrentTaskExecution) {
+    SchedulerImpl1 scheduler;
+    const int numTasks = 1000;
+    std::atomic<int> executedTasks(0);
+    std::atomic<bool> stopFlag(false);
+
+    // 线程1: 执行任务
+    std::thread runThread([&]() {
+        while (!stopFlag.load()) {
+            scheduler.runTasks();
+            std::this_thread::yield();
+        }
+    });
+
+    // 线程2: 调度任务
+    std::thread scheduleThread([&]() {
+        for (int i = 0; i < numTasks; ++i) {
+            scheduler.schedule(Task([&executedTasks]() {
+                executedTasks.fetch_add(1);
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }, __FILE__, __LINE__));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+
+    scheduleThread.join();
+    
+    // 等待所有任务执行完毕
+    while (executedTasks.load() < numTasks) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    stopFlag.store(true);
+    runThread.join();
+
+    EXPECT_EQ(executedTasks.load(), numTasks);
+    EXPECT_EQ(scheduler.getTaskCount(), 0);
+}
+
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

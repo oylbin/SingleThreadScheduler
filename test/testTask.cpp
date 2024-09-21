@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include "SingleThreadScheduler/Task.h"
+#include <thread>
+#include <chrono>
 
 // 测试正常执行的任务
 TEST(TaskTest, NormalExecution) {
@@ -58,4 +60,29 @@ TEST(TaskTest, MultipleExceptionHandlers) {
     task.execute();
 
     EXPECT_EQ(handlersCalled, 2);
+}
+
+// 测试任务执行和计时功能
+TEST(TaskTest, ExecutionAndTiming) {
+    std::string output;
+    Task task([&output]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        output = "Task executed";
+    }, __FILE__, __LINE__);
+
+    EXPECT_FALSE(task.hasStarted());
+    EXPECT_FALSE(task.hasEnded());
+
+    task.execute();
+
+    EXPECT_TRUE(task.hasStarted());
+    EXPECT_TRUE(task.hasEnded());
+    EXPECT_EQ(output, "Task executed");
+
+    auto duration = task.getDuration();
+    EXPECT_GE(duration, std::chrono::milliseconds(50));
+    EXPECT_LT(duration, std::chrono::milliseconds(100));  // 允许一些误差
+
+    auto waitingTime = task.getWaitingTime();
+    EXPECT_LT(waitingTime, std::chrono::milliseconds(10));  // 假设创建后很快就执行了
 }

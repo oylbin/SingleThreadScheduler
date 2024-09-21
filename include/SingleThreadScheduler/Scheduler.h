@@ -18,11 +18,23 @@
 
 class IScheduler {
 public:
+    // return taskID, return <0 if failed
     virtual int schedule(const Task& task) = 0;
-    virtual void unschedule(int taskID) = 0;
+    // return true if success
+    virtual bool unschedule(int taskID) = 0;
+
+    // when running a task, the task may schedule new task.
+    // the new task will not be run until next runTasks is called.
     virtual void runTasks() = 0;
+
     virtual int getTaskCount() const = 0;
-    virtual void clear() = 0;
+
+    // not accept new task after stop
+    virtual void stop() = 0;
+
+    // 是否要提供 clear 接口？考虑到多线程的应用场景，感觉clear并没有什么实际意义。
+    // 比如一个线程调用 clear，而另外一个现场调用 schedule，那么要么是没有clear成功，要么是clear成功后，新的任务被丢弃而没有执行。
+    // virtual void clear() = 0;
 };
 
 class SchedulerImpl1 : public IScheduler {
@@ -30,14 +42,19 @@ public:
     SchedulerImpl1();
     ~SchedulerImpl1();
     int schedule(const Task& task) override;
-    void unschedule(int taskID) override;
+    bool unschedule(int taskID) override;
+
+    // run tasks in order of taskID (which is the order of schedule)
+    // task queue is cleared before run, but after runTasks is called, the tasks queue may be not empty,
+    // because tasks may schedule new tasks in the runTasks.
     void runTasks() override;
     int getTaskCount() const override;
-    void clear() override;
+    void stop() override;
 private:
     std::unordered_map<int, Task> m_tasks;
     std::mutex m_mutex;
-    int m_nextTaskID;
+    int m_nextTaskID{0};
+    bool m_isRunning{true};
 };
 
 
