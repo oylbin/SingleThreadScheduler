@@ -33,7 +33,7 @@ void SchedulerImpl1::stop() {
     m_isRunning = false;
 }
 
-void SchedulerImpl1::runTasks() {
+void SchedulerImpl1::runTasks(bool keepOldTasks) {
     if (!m_isRunning) {
         return;
     }
@@ -52,7 +52,9 @@ void SchedulerImpl1::runTasks() {
         for (int id : sortedTaskIds) {
             tasksToRun.push_back(m_tasks[id]);
         }
-        m_tasks.clear();
+        if (!keepOldTasks) {
+            m_tasks.clear();
+        }
     }
     
     for (auto& task : tasksToRun) {

@@ -46,6 +46,23 @@ TEST_F(SchedulerImpl1Test, RunTasks) {
     EXPECT_TRUE(task2Executed);
     EXPECT_EQ(scheduler.getTaskCount(), 0);  // 任务执行后调度器中没有任务
 }
+TEST_F(SchedulerImpl1Test, RunAndKeepOldTasks) {
+    bool task1Executed = false;
+    bool task2Executed = false;
+    
+    Task task1([&task1Executed]() { task1Executed = true; }, __FILE__, __LINE__);
+    Task task2([&task2Executed]() { task2Executed = true; }, __FILE__, __LINE__);
+    
+    scheduler.schedule(task1);
+    scheduler.schedule(task2);
+    EXPECT_EQ(scheduler.getTaskCount(), 2);
+    
+    scheduler.runTasks(true);
+    
+    EXPECT_TRUE(task1Executed);
+    EXPECT_TRUE(task2Executed);
+    EXPECT_EQ(scheduler.getTaskCount(), 2); 
+}
 
 TEST_F(SchedulerImpl1Test, TaskExceptionHandling) {
     bool exceptionCaught = false;

@@ -23,9 +23,12 @@ public:
     // return true if success
     virtual bool unschedule(int taskID) = 0;
 
-    // when running a task, the task may schedule new task.
+    // run tasks in order of taskID (which is the order of schedule)
+    // task queue is cleared before run, but when running a task, the task may schedule new task.
+    // so after runTasks is called, the tasks queue may be not empty,
     // the new task will not be run until next runTasks is called.
-    virtual void runTasks() = 0;
+    // if keepOldTasks is true, the old tasks will not be cleared.
+    virtual void runTasks(bool keepOldTasks = false) = 0;
 
     virtual int getTaskCount() const = 0;
 
@@ -44,10 +47,7 @@ public:
     int schedule(const Task& task) override;
     bool unschedule(int taskID) override;
 
-    // run tasks in order of taskID (which is the order of schedule)
-    // task queue is cleared before run, but after runTasks is called, the tasks queue may be not empty,
-    // because tasks may schedule new tasks in the runTasks.
-    void runTasks() override;
+    void runTasks(bool keepOldTasks = false) override;
     int getTaskCount() const override;
     void stop() override;
 private:
@@ -56,14 +56,3 @@ private:
     int m_nextTaskID{0};
     bool m_isRunning{true};
 };
-
-
-// class OnceScheduler : public IScheduler {
-// public:
-//     void schedule(const Task& task) override {
-//         // 实现单次任务调度
-//     }
-//     void unschedule(int taskID) override {
-//         // 实现取消单次任务调度
-//     }
-//     void runScheduledTasks() override {
