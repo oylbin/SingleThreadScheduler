@@ -46,6 +46,10 @@ void SingleThreadSchedulerImpl1::stop() {
 }
 
 void SingleThreadSchedulerImpl1::update() {
-    m_onceScheduler->runTasks(false);
+    while(m_onceScheduler->getTaskCount() > 0) {
+        m_onceScheduler->runTasks(false);
+    }
     m_repeatScheduler->runTasks(true);
+    // todo 统计一次 update 的执行时间
+    // 记录 slow log
 }
