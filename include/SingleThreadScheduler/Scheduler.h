@@ -2,22 +2,11 @@
 
 #include "Task.h"
 
-// class IScheduler {
-// public:
-//     virtual void scheduleOnce(const Task& task) = 0;
-//     virtual void unscheduleOnce(int taskID) = 0;
-//     virtual void scheduleRepeat(const Task& task) = 0;
-//     virtual void unscheduleRepeat(int taskID) = 0;
-//     virtual void scheduleTaskBeforeStop(const Task& task) = 0;
-//     virtual void unscheduleTaskBeforeStop(int taskID) = 0;
-//     virtual void runOnceTasks() = 0;
-//     virtual void runRepeatTasks() = 0;
-//     virtual void runTasksBeforeStop() = 0;
-//     virtual void stop() = 0;
-// };
+
 
 class IScheduler {
 public:
+    virtual ~IScheduler() = default;
     // return taskID, return <0 if failed
     virtual int schedule(const Task& task) = 0;
     // return true if success
@@ -43,7 +32,7 @@ public:
 class SchedulerImpl1 : public IScheduler {
 public:
     SchedulerImpl1();
-    ~SchedulerImpl1();
+    ~SchedulerImpl1() override;
     int schedule(const Task& task) override;
     bool unschedule(int taskID) override;
 
@@ -54,5 +43,45 @@ private:
     std::unordered_map<int, Task> m_tasks;
     std::mutex m_mutex;
     int m_nextTaskID{0};
+    bool m_isRunning{true};
+};
+
+
+class ISingleThreadScheduler {
+public:
+    virtual ~ISingleThreadScheduler() = default;
+    virtual int scheduleOnce(const Task& task) = 0;
+    // virtual bool unscheduleOnce(int taskID) = 0;
+    virtual int scheduleRepeat(const Task& task) = 0;
+    virtual int unscheduleRepeat(int taskID) = 0;
+    virtual int scheduleTaskBeforeStop(const Task& task) = 0;
+    // virtual bool unscheduleTaskBeforeStop(int taskID) = 0;
+    // virtual void runOnceTasks() = 0;
+    // virtual void runRepeatTasks() = 0;
+    // virtual void runTasksBeforeStop() = 0;
+
+    // run tasks in order of schedule time
+    // run once tasks and then repeat tasks
+    virtual void update() = 0;
+
+    // stop scheduler, not accept new task after stop
+    // run all the scheduled tasks before stop
+    virtual void stop() = 0;
+};
+
+class SingleThreadSchedulerImpl1 : public ISingleThreadScheduler {
+public:
+    SingleThreadSchedulerImpl1();
+    ~SingleThreadSchedulerImpl1() override;
+    int scheduleOnce(const Task& task) override;
+    int scheduleRepeat(const Task& task) override;
+    int unscheduleRepeat(int taskID) override;
+    int scheduleTaskBeforeStop(const Task& task) override;
+    void stop() override;
+    void update() override;
+private:
+    IScheduler* m_onceScheduler;
+    IScheduler* m_repeatScheduler;
+    IScheduler* m_taskBeforeStopScheduler;
     bool m_isRunning{true};
 };
