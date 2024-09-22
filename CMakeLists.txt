@@ -6,6 +6,7 @@ project(singlethreadscheduler VERSION 1.0)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
 # 添加一个选项来控制是否构建测试
 option(BUILD_TESTING "Build the testing tree." OFF)
 
@@ -59,3 +60,9 @@ install(TARGETS singlethreadscheduler
 install(DIRECTORY include/
   DESTINATION include
 )
+if(WIN32)
+    target_compile_options(singlethreadscheduler PUBLIC "$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+    target_compile_options(singlethreadscheduler PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+    target_compile_options(singlethreadschedulertest PUBLIC "$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+    target_compile_options(singlethreadschedulertest PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+endif()

@@ -1,3 +1,4 @@
+#include  <algorithm>
 #include "SingleThreadScheduler/Scheduler.h"
 
 using namespace singlethreadscheduler;
@@ -6,7 +7,7 @@ SchedulerImpl1::SchedulerImpl1() : m_nextTaskID(0), m_isRunning(true) {}
 
 SchedulerImpl1::~SchedulerImpl1() {}
 
-int SchedulerImpl1::schedule(const Task& task) {
+int SchedulerImpl1::schedule(const Task &task) {
     if (!m_isRunning) {
         return -1;
     }
@@ -45,7 +46,7 @@ void SchedulerImpl1::runTasks(bool keepOldTasks) {
         // 创建一个vector来存储和排序任务ID
         std::vector<int> sortedTaskIds;
         sortedTaskIds.reserve(m_tasks.size());
-        for (const auto& pair : m_tasks) {
+        for (const auto &pair : m_tasks) {
             sortedTaskIds.push_back(pair.first);
         }
         // 按ID排序
@@ -58,11 +59,11 @@ void SchedulerImpl1::runTasks(bool keepOldTasks) {
             m_tasks.clear();
         }
     }
-    
-    for (auto& task : tasksToRun) {
-        task.addExceptionHandler([](const TaskExceptionContext& context) {
+
+    for (auto &task : tasksToRun) {
+        task.addExceptionHandler([](const TaskExceptionContext &context) {
             std::cerr << "Task exception: " << context.what() << std::endl;
-        });
+            });
         task.execute();
         // TODO 对 task 的排队时间和执行时间进行统计
     }
