@@ -47,6 +47,10 @@ if(BUILD_TESTING)
     else()
         message(WARNING "No test sources found. Tests will not be built.")
     endif()
+    if(WIN32)
+        target_compile_options(singlethreadschedulertest PUBLIC "$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+        target_compile_options(singlethreadschedulertest PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+    endif()
 endif()
 
 # 添加安装
@@ -63,6 +67,4 @@ install(DIRECTORY include/
 if(WIN32)
     target_compile_options(singlethreadscheduler PUBLIC "$<$<C_COMPILER_ID:MSVC>:/utf-8>")
     target_compile_options(singlethreadscheduler PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-    target_compile_options(singlethreadschedulertest PUBLIC "$<$<C_COMPILER_ID:MSVC>:/utf-8>")
-    target_compile_options(singlethreadschedulertest PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 endif()
