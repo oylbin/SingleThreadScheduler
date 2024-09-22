@@ -2,7 +2,7 @@
 
 #include "SingleThreadScheduler/Task.h"
 
-
+namespace singlethreadscheduler {
 
 class IScheduler {
 public:
@@ -85,3 +85,5 @@ private:
     IScheduler* m_taskBeforeStopScheduler;
     bool m_isRunning{true};
 };
+
+} // namespace singlethreadscheduler

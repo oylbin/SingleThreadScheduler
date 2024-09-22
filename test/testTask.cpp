@@ -2,7 +2,7 @@
 #include "SingleThreadScheduler/Task.h"
 #include <thread>
 #include <chrono>
-
+using namespace singlethreadscheduler;
 // 测试正常执行的任务
 TEST(TaskTest, NormalExecution) {
     bool executed = false;

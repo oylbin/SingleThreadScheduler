@@ -1,5 +1,7 @@
 #include "SingleThreadScheduler/Scheduler.h"
 
+using namespace singlethreadscheduler;
+
 SchedulerImpl1::SchedulerImpl1() : m_nextTaskID(0), m_isRunning(true) {}
 
 SchedulerImpl1::~SchedulerImpl1() {}

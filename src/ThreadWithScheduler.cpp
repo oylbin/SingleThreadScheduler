@@ -5,7 +5,7 @@
 
 #include "SingleThreadScheduler/Scheduler.h"
 #include "SingleThreadScheduler/ThreadWithScheduler.h"
-
+using namespace singlethreadscheduler;
     inline void UpdateLoop(std::function<void()> update, std::function<bool()> finishCheck, std::int64_t updateIntervalMS)
     {
         std::chrono::steady_clock::time_point lastTickTime = std::chrono::steady_clock::now();

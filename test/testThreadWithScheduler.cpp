@@ -2,7 +2,7 @@
 #include "SingleThreadScheduler/ThreadWithScheduler.h"
 #include <chrono>
 #include <thread>
-
+using namespace singlethreadscheduler;
 class ThreadWithSchedulerTest : public ::testing::Test {
 protected:
     void SetUp() override {

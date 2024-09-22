@@ -3,7 +3,7 @@
 #include <thread>
 #include <atomic>
 #include <vector>
-
+using namespace singlethreadscheduler;
 class SchedulerImpl1Test : public ::testing::Test {
 protected:
     SchedulerImpl1 scheduler;

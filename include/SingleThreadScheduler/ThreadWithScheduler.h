@@ -6,6 +6,8 @@
 
 #include "SingleThreadScheduler/Scheduler.h"
 
+namespace singlethreadscheduler {
+
 // 带调度器和带主循环的线程对象
 class ThreadWithScheduler
 {
@@ -38,3 +40,5 @@ private:
     std::thread::id m_threadID;
     ISingleThreadScheduler *m_scheduler;
 };
+
+} // namespace singlethreadscheduler

@@ -6,6 +6,8 @@
 #include <list>
 #include <chrono>
 
+namespace singlethreadscheduler {
+
 class TaskExceptionContext {
 public:
     TaskExceptionContext(const std::string& what, const std::string& file, int line) : what_(what), file_(file), line_(line) {}
@@ -94,5 +96,6 @@ private:
     int line_;
     std::chrono::steady_clock::time_point created_at_;
     std::chrono::steady_clock::time_point start_time_;
-    std::chrono::steady_clock::time_point end_time_;
-};
+        std::chrono::steady_clock::time_point end_time_;
+    };
+} // namespace singlethreadscheduler

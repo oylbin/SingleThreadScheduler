@@ -1,5 +1,5 @@
 #include "SingleThreadScheduler/Scheduler.h"
-
+using namespace singlethreadscheduler;
 SingleThreadSchedulerImpl1::SingleThreadSchedulerImpl1() {
     m_onceScheduler = new SchedulerImpl1();
     m_repeatScheduler = new SchedulerImpl1();

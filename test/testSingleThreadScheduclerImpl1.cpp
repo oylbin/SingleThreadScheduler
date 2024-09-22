@@ -2,7 +2,7 @@
 #include "SingleThreadScheduler/Scheduler.h"
 #include <chrono>
 #include <thread>
-
+using namespace singlethreadscheduler;
 class SingleThreadSchedulerImpl1Test : public ::testing::Test {
 protected:
     SingleThreadSchedulerImpl1* scheduler;
