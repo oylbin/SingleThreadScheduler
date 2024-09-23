@@ -2,6 +2,8 @@
 
 #include <unordered_map>
 #include <mutex>
+#include <thread>
+
 #include "SingleThreadScheduler/Task.h"
 
 namespace singlethreadscheduler {
