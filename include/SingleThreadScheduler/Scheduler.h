@@ -56,36 +56,32 @@ namespace singlethreadscheduler {
         // virtual bool unscheduleOnce(int taskID) = 0;
         virtual int scheduleRepeat(const Task &task) = 0;
         virtual int unscheduleRepeat(int taskID) = 0;
-        virtual int scheduleTaskBeforeStop(const Task &task) = 0;
-        // virtual bool unscheduleTaskBeforeStop(int taskID) = 0;
-        // virtual void runOnceTasks() = 0;
-        // virtual void runRepeatTasks() = 0;
-        // virtual void runTasksBeforeStop() = 0;
 
         // run tasks in order of schedule time
         // run once tasks and then repeat tasks
         virtual void update() = 0;
 
         // stop scheduler, not accept new task after stop
-        // run all the scheduled tasks before stop
         virtual void stop() = 0;
     };
 
     class SingleThreadSchedulerImpl1 : public ISingleThreadScheduler {
     public:
-        SingleThreadSchedulerImpl1();
+        SingleThreadSchedulerImpl1(std::thread::id tid);
         ~SingleThreadSchedulerImpl1() override;
         int scheduleOnce(const Task &task) override;
         int scheduleRepeat(const Task &task) override;
         int unscheduleRepeat(int taskID) override;
-        int scheduleTaskBeforeStop(const Task &task) override;
         void stop() override;
         void update() override;
     private:
         IScheduler *m_onceScheduler;
         IScheduler *m_repeatScheduler;
-        IScheduler *m_taskBeforeStopScheduler;
         bool m_isRunning{ true };
+
+        // ISingleThreadScheduler 是与一个线程绑定的。ISingleThreadScheduler::update函数只能在这个线程中调用。
+        // 其他线程通过 ISingleThreadScheduler::schedule* 方法向这个线程提交任务。
+        std::thread::id m_bindingThreadID;
     };
 
 } // namespace singlethreadscheduler

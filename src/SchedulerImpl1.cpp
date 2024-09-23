@@ -65,6 +65,11 @@ void SchedulerImpl1::runTasks(bool keepOldTasks) {
             std::cerr << "Task exception: " << context.what() << std::endl;
             });
         task.execute();
+        // task 运行过程中，可能从另外一个线程调用 SchedulerImpl1::stop， 所以每个task执行完之后都检查一下。
+        // TODO 那么对于尚未运行的任务，要作何处理？
+        if (!m_isRunning) {
+            break;
+        }
         // TODO 对 task 的排队时间和执行时间进行统计
     }
 }

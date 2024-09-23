@@ -6,80 +6,90 @@
 #include "SingleThreadScheduler/Scheduler.h"
 #include "SingleThreadScheduler/ThreadWithScheduler.h"
 using namespace singlethreadscheduler;
-    inline void UpdateLoop(std::function<void()> update, std::function<bool()> finishCheck, std::int64_t updateIntervalMS)
+inline void UpdateLoop(std::function<void()> update, std::function<bool()> finishCheck, std::int64_t updateIntervalMS)
+{
+    std::chrono::steady_clock::time_point lastTickTime = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point lastRealTickTime = lastTickTime;
+    while (true)
     {
-        std::chrono::steady_clock::time_point lastTickTime = std::chrono::steady_clock::now();
-        std::chrono::steady_clock::time_point lastRealTickTime = lastTickTime;
-        while (true)
+        update();
+        if (finishCheck && finishCheck())
         {
-            update();
-            if (finishCheck && finishCheck())
+            break;
+        }
+        if (updateIntervalMS > 0)
+        {
+            auto currentTime = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTickTime).count();
+            lastTickTime = lastTickTime + std::chrono::milliseconds(updateIntervalMS);
+            if (elapsed >= 0 && elapsed < updateIntervalMS)
             {
-                break;
+                auto sleepTimeMS = updateIntervalMS - elapsed;
+                // Poco::Thread::sleep((long)sleepTimeMS);
+                std::this_thread::sleep_for(std::chrono::milliseconds(sleepTimeMS));
+                lastRealTickTime = lastTickTime;
             }
-            if (updateIntervalMS > 0)
+            else
             {
-                auto currentTime = std::chrono::steady_clock::now();
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTickTime).count();
-                lastTickTime = lastTickTime + std::chrono::milliseconds(updateIntervalMS);
-                if (elapsed >= 0 && elapsed < updateIntervalMS)
+                auto realElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastRealTickTime).count();
+                if (realElapsed > updateIntervalMS * 2)
                 {
-                    auto sleepTimeMS = updateIntervalMS - elapsed;
-                    // Poco::Thread::sleep((long)sleepTimeMS);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(sleepTimeMS));
-                    lastRealTickTime = lastTickTime;
+                    // slow loop, log it
+                    // auto &logger = Poco::Logger::get("raven");
+                    // poco_warning_f2(logger, "slow loop %s ms > %s ms", std::to_string(realElapsed), std::to_string(updateIntervalMS));
+                    std::cout << "slow loop " << realElapsed << " ms > " << updateIntervalMS << " ms" << std::endl;
                 }
-                else
-                {
-                    auto realElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastRealTickTime).count();
-                    if (realElapsed > updateIntervalMS * 2)
-                    {
-                        // slow loop, log it
-                        // auto &logger = Poco::Logger::get("raven");
-                        // poco_warning_f2(logger, "slow loop %s ms > %s ms", std::to_string(realElapsed), std::to_string(updateIntervalMS));
-                        std::cout << "slow loop " << realElapsed << " ms > " << updateIntervalMS << " ms" << std::endl;
-                    }
-                    lastRealTickTime = currentTime;
-                }
+                lastRealTickTime = currentTime;
             }
         }
+        else {
+            // 用 yiled 是不是可以避免 busy loop？
+            std::this_thread::yield();
+        }
     }
+}
 
-ThreadWithScheduler::ThreadWithScheduler() : m_paused(true), m_stopped(false), m_loopTimeMS(10)
+ThreadWithScheduler::ThreadWithScheduler() : m_started(false), m_stopped(false), m_loopTimeMS(10)
 {
+    // 这里会立刻在新线程开始执行 ThreadWithScheduler::run
+    // 但因为 m_started = false，所以会在线程内部 sleep 等待
     m_thread = new std::thread(&ThreadWithScheduler::run, this);
     m_threadID = m_thread->get_id();
-    m_scheduler = new SingleThreadSchedulerImpl1();
+    m_scheduler = new SingleThreadSchedulerImpl1(m_threadID);
+    m_beforeStopScheduler = new SchedulerImpl1();
 }
-ThreadWithScheduler::~ThreadWithScheduler()
-{
 
-    if (m_thread != nullptr)
-    {
-        this->pause();
-        m_scheduler->stop();
-        this->stopAndJoin(); // 这里会等待 m_thread 结束
-        delete m_scheduler;
-        m_scheduler = nullptr;
-        delete m_thread;
-        m_thread = nullptr;
+
+int ThreadWithScheduler::scheduleTaskBeforeThreadStop(const Task &task) {
+    if (m_stopped) {
+        return -1;
     }
+    if (m_beforeStopScheduler == nullptr) {
+        return -2;
+    }
+    return m_beforeStopScheduler->schedule(task);
 }
 void ThreadWithScheduler::run()
 {
     auto updateFunc = [this]()
-    {
-        if (!m_paused)
         {
-            // m_paused 初始值是 true，所以第一次进入这个循环时，可以保证不会访问到空指针。
-            m_scheduler->update();
-        }
-        /**/ };
+            if (m_started)
+            {
+                // m_paused 初始值是 true，所以第一次进入这个循环时，可以保证不会访问到空指针。
+                m_scheduler->update();
+            }
+            /**/ };
     auto finishCheckFunc = [this]()
-    { return m_stopped; };
+        { return m_stopped; };
     UpdateLoop(updateFunc, finishCheckFunc, m_loopTimeMS);
 
-    m_scheduler->stop();
+    // 只有当 m_stopped = true 是，上面的 UpdateLoop 才会结束。
+    // 此时，执行所有通过 ThreadWithScheduler::scheduleTaskBeforeThreadStop 调度的任务
+    if (m_beforeStopScheduler != nullptr) {
+        m_beforeStopScheduler->runTasks(false);
+        delete m_beforeStopScheduler;
+        m_beforeStopScheduler = nullptr;
+    }
 }
 ISingleThreadScheduler *ThreadWithScheduler::getScheduler()
 {
@@ -88,46 +98,42 @@ ISingleThreadScheduler *ThreadWithScheduler::getScheduler()
 
 void ThreadWithScheduler::start()
 {
-    m_paused = false;
-    m_stopped = false;
+    m_started = true;
 }
-void ThreadWithScheduler::stopAndJoin()
-{
-    // auto logger = spdlog::get("raven");
-    // logger->debug("before stop");
-    // 如果线程已经标记为停止，则不执行任何操作
-    if (m_stopped)
-    {
-        // 如果 m_stopped 已经是 true，exchange 方法会返回 true，因此直接返回
-        return;
-    }
-    m_stopped = true;
-    // logger->debug("after stop");
-    // 现在 m_stopped 被设置为 true，并且我们知道这是首次调用 stop
 
-    // 等待线程结束，如果它是可加入的
-    this->join();
-    // logger->debug("after join");
-    // 可以在这里执行任何其他清理工作
-}
-void ThreadWithScheduler::pause()
-{
-    // TODO ISingleThreadScheduler 是不是也应该提供 pause 和 resume 的接口？
-    // 这样可以更快速的中断网络线程的任务调度。否则要等待这一次任务调度把所有队列中的任务都执行结束。
-    m_paused = true;
-}
-void ThreadWithScheduler::resume()
-{
-    m_paused = false;
-}
 void ThreadWithScheduler::setLoopTimeMS(int ms)
 {
     m_loopTimeMS = ms;
 }
-void ThreadWithScheduler::join()
+void ThreadWithScheduler::stopAndJoin()
 {
-    if (m_threadID != std::this_thread::get_id() && m_thread != NULL && m_thread->joinable())
+    // 是不是要考虑从其他线程调用该方法，或从 m_thread 调用该方法两种情况？
+    if (m_stopped)
     {
-        m_thread->join();
+        return;
     }
+    m_stopped = true;
+    m_scheduler->stop();
+    if (m_threadID != std::this_thread::get_id())
+    {
+        // TODO 是否需要检查 m_thread != NULL && m_thread->joinable()
+        m_thread->join();
+        // 等待 m_thread 执行并退出 ThreadWithScheduler::run 函数
+    }
+    else {
+        // 在 m_thread 内部调用 stopAndJoin，此时可以直接执行 tasksBeforeStop
+        m_beforeStopScheduler->runTasks(false);
+        delete m_beforeStopScheduler;
+        m_beforeStopScheduler = nullptr;
+    }
+
+    delete m_scheduler;
+    m_scheduler = nullptr;
+    // m_beforeStopScheduler 应该已经是 nullptr 的状态。
+    delete m_thread;
+    m_thread = nullptr;
+}
+ThreadWithScheduler::~ThreadWithScheduler()
+{
+    this->stopAndJoin();
 }

@@ -13,7 +13,7 @@ protected:
         delete thread;
     }
 
-    ThreadWithScheduler* thread;
+    ThreadWithScheduler *thread;
 };
 
 TEST_F(ThreadWithSchedulerTest, InitTest) {
@@ -38,39 +38,20 @@ TEST_F(ThreadWithSchedulerTest, ScheduleTaskTest) {
     EXPECT_EQ(counter, 1);
 }
 
-TEST_F(ThreadWithSchedulerTest, PauseAndResumeTest) {
-    std::atomic<int> counter(0);
-    auto task = [&counter]() { counter++; };
-
-    thread->start();
-    thread->getScheduler()->scheduleRepeat(Task(task, __FILE__, __LINE__));
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-    thread->pause();
-    int pausedCount = counter;
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    EXPECT_EQ(counter, pausedCount);
-
-    thread->resume();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    EXPECT_GT(counter, pausedCount);
-
-    thread->stopAndJoin();
-}
 
 TEST_F(ThreadWithSchedulerTest, SetLoopTimeTest) {
     std::atomic<int> counter(0);
-    auto task = [&counter]() { 
+    auto task = [&counter]() {
         auto now = std::chrono::steady_clock::now();
         auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
         std::cout << "milliseconds: " << milliseconds << std::endl;
-        counter++; 
-    };
+        counter++;
+        };
 
     thread->setLoopTimeMS(100);
     thread->start();
     thread->getScheduler()->scheduleRepeat(Task(task, __FILE__, __LINE__));
-    
+
     std::this_thread::sleep_for(std::chrono::milliseconds(230));
     thread->stopAndJoin();
 
